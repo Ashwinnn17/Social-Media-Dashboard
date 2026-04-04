@@ -13,12 +13,12 @@ const getMe = async (req, res) => {
 // PUT /api/user/accounts
 // Body: { github, reddit, lastfm }
 const updateAccounts = async (req, res) => {
-  const { github, reddit, lastfm } = req.body;
+  const { github, reddit, lastfm, steam } = req.body;
 
   try {
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { accounts: { github: github || '', reddit: reddit || '', lastfm: lastfm || '' } },
+      { accounts: { github: github || '', reddit: reddit || '', lastfm: lastfm || '', steam: steam || '' } },
       { new: true }
     ).select('-password');
 

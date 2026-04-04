@@ -4,7 +4,7 @@ const API = "http://localhost:5000/api";
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const C = { bg: "#0f0f0f", surface: "#161616", border: "#242424", text: "#ddd", muted: "#555", err: "#f87171", ok: "#4ade80" };
-const PC = { GitHub: "#e8e8e8", Reddit: "#ff4500", "Last.fm": "#d51007" };
+const PC = { GitHub: "#e8e8e8", Reddit: "#ff4500", "Last.fm": "#d51007", Steam: "#1db954" };
 const LANG_COLOR = { JavaScript: "#f7df1e", Python: "#3572A5", TypeScript: "#3178c6", "C++": "#f34b7d", Go: "#00add8", Rust: "#dea584" };
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ function AuthScreen({ onAuth }) {
 
 // ── Settings Screen ───────────────────────────────────────────────────────────
 function SettingsScreen({ user, token, onSave, onBack }) {
-  const [form, setForm]   = useState({ github: user.accounts?.github || "", reddit: user.accounts?.reddit || "", lastfm: user.accounts?.lastfm || "" });
+  const [form, setForm]   = useState({ github: user.accounts?.github || "", reddit: user.accounts?.reddit || "", lastfm: user.accounts?.lastfm || "", steam: user.accounts?.steam || "" });
   const [msg, setMsg]     = useState("");
   const [err, setErr]     = useState("");
   const [loading, setLoading] = useState(false);
@@ -132,9 +132,10 @@ function SettingsScreen({ user, token, onSave, onBack }) {
           </div>
 
           {[
-            { key: "github",  label: "GitHub Username",  placeholder: "e.g. torvalds",  color: PC.GitHub  },
-            { key: "reddit",  label: "Reddit Username",  placeholder: "e.g. spez",       color: PC.Reddit  },
-            { key: "lastfm",  label: "Last.fm Username", placeholder: "e.g. rj",         color: PC["Last.fm"] },
+            { key: "github",  label: "GitHub Username",   placeholder: "e.g. torvalds",          color: PC.GitHub  },
+            { key: "reddit",  label: "Reddit Username",   placeholder: "e.g. spez",              color: PC.Reddit  },
+            { key: "lastfm",  label: "Last.fm Username",  placeholder: "e.g. rj",                color: PC["Last.fm"] },
+            { key: "steam",   label: "Steam ID64",        placeholder: "e.g. 76561198842043717", color: PC.Steam },
           ].map(({ key, label, placeholder, color }) => (
             <div key={key} style={{ marginBottom: 16 }}>
               <div style={{ ...lbl, color }}>{label}</div>
@@ -158,6 +159,68 @@ function Loader() {
 }
 function ErrMsg({ msg }) {
   return <div style={{ fontSize: 11, color: C.err, padding: "16px 0" }}>{msg}</div>;
+}
+
+function SteamPanel({ token }) {
+  const [data, setData] = useState(null);
+  const [err, setErr]   = useState(null);
+
+  useEffect(() => {
+    apiFetch("/feed/steam", {}, token).then(setData).catch(e => setErr(e.message));
+  }, [token]);
+
+  if (err)   return <ErrMsg msg={err} />;
+  if (!data) return <Loader />;
+
+  const { profile, recentGames, totalGames } = data;
+
+  const statusColor = profile.status === "Online" ? C.ok : C.muted;
+
+  return (
+    <>
+      {/* Profile card */}
+      <div style={{ ...card, marginBottom: 12, display: "flex", alignItems: "center", gap: 16 }}>
+        <img src={profile.avatar} alt="" style={{ width: 56, height: 56, borderRadius: 4, border: `1px solid ${C.border}` }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{profile.name}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor, display: "inline-block" }} />
+            <span style={{ fontSize: 11, color: statusColor }}>{profile.status}</span>
+            {profile.gameExtraInfo && (
+              <span style={{ fontSize: 11, color: PC.Steam }}>▶ {profile.gameExtraInfo}</span>
+            )}
+          </div>
+          <a href={profile.profileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: C.muted, textDecoration: "none" }}>{profile.profileUrl}</a>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>{totalGames.toLocaleString()}</div>
+          <div style={{ fontSize: 9, color: C.muted, letterSpacing: 1 }}>GAMES</div>
+        </div>
+      </div>
+
+      {/* Recently played */}
+      <div style={card}>
+        <div style={lbl}>Recently Played — Last 2 Weeks</div>
+        {recentGames.length === 0 ? (
+          <div style={{ fontSize: 11, color: C.muted }}>No recent activity</div>
+        ) : recentGames.map((g, i) => (
+          <div key={g.appid} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < recentGames.length - 1 ? `1px solid ${C.border}` : "none" }}>
+            {g.img_icon_url && (
+              <img src={g.img_icon_url} alt="" style={{ width: 32, height: 32, borderRadius: 3 }} />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{g.name}</div>
+              <div style={{ fontSize: 10, color: C.muted }}>{g.playtime_forever} hrs total</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: PC.Steam }}>{g.playtime_2weeks}h</div>
+              <div style={{ fontSize: 9, color: C.muted, letterSpacing: 1 }}>LAST 2 WKS</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
 }
 
 function GitHubPanel({ token }) {
@@ -297,11 +360,13 @@ function AnalyticsPanel({ token }) {
   const [gh,  setGh]  = useState(null);
   const [rd,  setRd]  = useState(null);
   const [lf,  setLf]  = useState(null);
+  const [st,  setSt]  = useState(null);
 
   useEffect(() => {
     apiFetch("/feed/github", {}, token).then(setGh).catch(() => setGh("err"));
     apiFetch("/feed/reddit", {}, token).then(setRd).catch(() => setRd("err"));
     apiFetch("/feed/lastfm", {}, token).then(setLf).catch(() => setLf("err"));
+    apiFetch("/feed/steam",  {}, token).then(setSt).catch(() => setSt("err"));
   }, [token]);
 
   const summaries = [
@@ -323,11 +388,17 @@ function AnalyticsPanel({ token }) {
         ? [["Scrobbles", parseInt(lf.info.playcount).toLocaleString()], ["Country", lf.info.country || "—"], ["Top Artist", lf.topArtists[0]?.name || "—"], ["Tracks Today", lf.recent.length]]
         : null,
     },
+    {
+      p: "Steam", color: PC.Steam,
+      rows: st && st !== "err"
+        ? [["Games Owned", st.totalGames.toLocaleString()], ["Status", st.profile.status], ["Top Game", st.recentGames[0]?.name || "—"], ["Hrs (2 wks)", st.recentGames[0]?.playtime_2weeks ?? "—"]]
+        : null,
+    },
   ];
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 16 }}>
         {summaries.map(({ p, color, rows }) => (
           <div key={p} style={{ ...card, borderTop: `2px solid ${color}` }}>
             <div style={{ ...lbl, color }}>{p}</div>
@@ -412,7 +483,7 @@ export default function App() {
   if (!token || !user) return <AuthScreen onAuth={onAuth} />;
   if (screen === "settings") return <SettingsScreen user={user} token={token} onSave={onSaveAccounts} onBack={() => setScreen("feed")} />;
 
-  const hasAccounts = user.accounts?.github || user.accounts?.reddit || user.accounts?.lastfm;
+  const hasAccounts = user.accounts?.github || user.accounts?.reddit || user.accounts?.lastfm || user.accounts?.steam;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'SF Mono','Fira Code','Courier New',monospace" }}>
@@ -465,8 +536,8 @@ export default function App() {
             <div style={{ fontSize: 11, color: C.muted }}>Live data from your connected accounts</div>
           </div>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
-            {["GitHub", "Reddit", "Last.fm"].map(p => (
+          <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
+            {["GitHub", "Reddit", "Last.fm", "Steam"].map(p => (
               <button key={p} style={tabS(platform === p)} onClick={() => setPlatform(p)}>
                 <span style={dot(PC[p])} />{p}
               </button>
@@ -477,6 +548,7 @@ export default function App() {
             {platform === "GitHub"  && <GitHubPanel  token={token} />}
             {platform === "Reddit"  && <RedditPanel  token={token} />}
             {platform === "Last.fm" && <LastfmPanel  token={token} />}
+            {platform === "Steam"   && <SteamPanel   token={token} />}
           </div>
         </>}
 

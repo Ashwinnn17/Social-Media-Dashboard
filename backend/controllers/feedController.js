@@ -134,4 +134,56 @@ const getLastfm = async (req, res) => {
   }
 };
 
-module.exports = { getGitHub, getReddit, getLastfm };
+// GET /api/feed/steam
+const getSteam = async (req, res) => {
+  const steamId = req.user.accounts.steam;
+  if (!steamId)
+    return res.status(400).json({ message: 'No Steam ID set. Update your account settings.' });
+
+  const key  = (process.env.STEAM_API_KEY || '').trim();
+  const base = 'https://api.steampowered.com';
+
+  try {
+    const [summaryRes, recentRes, ownedRes] = await Promise.all([
+      axios.get(`${base}/ISteamUser/GetPlayerSummaries/v2/?key=${key}&steamids=${steamId}`),
+      axios.get(`${base}/IPlayerService/GetRecentlyPlayedGames/v1/?key=${key}&steamid=${steamId}&count=5`),
+      axios.get(`${base}/IPlayerService/GetOwnedGames/v1/?key=${key}&steamid=${steamId}&include_appinfo=false`),
+    ]);
+
+    const player  = summaryRes.data?.response?.players?.[0];
+    if (!player)
+      return res.status(404).json({ message: `Steam profile not found for ID "${steamId}"` });
+
+    const recentGames = (recentRes.data?.response?.games || []).map(g => ({
+      appid:             g.appid,
+      name:              g.name,
+      playtime_2weeks:   Math.round(g.playtime_2weeks  / 60 * 10) / 10, // hours
+      playtime_forever:  Math.round(g.playtime_forever / 60 * 10) / 10,
+      img_icon_url:      g.img_icon_url
+        ? `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.img_icon_url}.jpg`
+        : null,
+    }));
+
+    const totalGames = ownedRes.data?.response?.game_count ?? 0;
+
+    const statusMap = { 0: 'Offline', 1: 'Online', 2: 'Busy', 3: 'Away', 4: 'Snooze', 5: 'Looking to Trade', 6: 'Looking to Play' };
+
+    res.json({
+      profile: {
+        steamid:      player.steamid,
+        name:         player.personaname,
+        avatar:       player.avatarfull,
+        profileUrl:   player.profileurl,
+        status:       statusMap[player.personastate] || 'Offline',
+        gameExtraInfo: player.gameextrainfo || null, // currently playing game
+      },
+      recentGames,
+      totalGames,
+    });
+  } catch (err) {
+    console.error('Steam API error:', err.message);
+    res.status(500).json({ message: 'Failed to fetch Steam data' });
+  }
+};
+
+module.exports = { getGitHub, getReddit, getLastfm, getSteam };

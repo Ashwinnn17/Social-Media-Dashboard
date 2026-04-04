@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema({
     github:  { type: String, default: '' },
     reddit:  { type: String, default: '' },
     lastfm:  { type: String, default: '' },
+    steam:   { type: String, default: '' },
   },
 }, { timestamps: true });
 
