@@ -8,11 +8,22 @@ const getGitHub = async (req, res) => {
 
   try {
     const headers = { 'User-Agent': 'social-dashboard' };
+    const sort = req.query.sort || 'updated';
+
+    let reposUrl = `https://api.github.com/users/${username}/repos?sort=updated&per_page=5`;
+    if (sort === 'stars') {
+      reposUrl = `https://api.github.com/users/${username}/repos?per_page=100`;
+    }
 
     const [userRes, reposRes] = await Promise.all([
       axios.get(`https://api.github.com/users/${username}`, { headers }),
-      axios.get(`https://api.github.com/users/${username}/repos?sort=updated&per_page=5`, { headers }),
+      axios.get(reposUrl, { headers }),
     ]);
+
+    let rawRepos = reposRes.data;
+    if (sort === 'stars') {
+      rawRepos = rawRepos.sort((a, b) => b.stargazers_count - a.stargazers_count).slice(0, 5);
+    }
 
     res.json({
       user: {
@@ -25,7 +36,7 @@ const getGitHub = async (req, res) => {
         public_repos: userRes.data.public_repos,
         html_url:     userRes.data.html_url,
       },
-      repos: reposRes.data.map(r => ({
+      repos: rawRepos.map(r => ({
         id:               r.id,
         name:             r.name,
         description:      r.description,
@@ -50,9 +61,10 @@ const getReddit = async (req, res) => {
 
   try {
     const headers = { 'User-Agent': 'social-dashboard:v1.0 (by /u/social_dashboard_app)' };
+    const sort = req.query.sort || 'new';
 
     const [postsRes, aboutRes] = await Promise.all([
-      axios.get(`https://www.reddit.com/user/${username}/submitted.json?limit=5`, { headers }),
+      axios.get(`https://www.reddit.com/user/${username}/submitted.json?limit=5&sort=${sort}`, { headers }),
       axios.get(`https://www.reddit.com/user/${username}/about.json`, { headers }),
     ]);
 
@@ -147,7 +159,7 @@ const getSteam = async (req, res) => {
     const [summaryRes, recentRes, ownedRes] = await Promise.all([
       axios.get(`${base}/ISteamUser/GetPlayerSummaries/v2/?key=${key}&steamids=${steamId}`),
       axios.get(`${base}/IPlayerService/GetRecentlyPlayedGames/v1/?key=${key}&steamid=${steamId}&count=5`),
-      axios.get(`${base}/IPlayerService/GetOwnedGames/v1/?key=${key}&steamid=${steamId}&include_appinfo=false`),
+      axios.get(`${base}/IPlayerService/GetOwnedGames/v1/?key=${key}&steamid=${steamId}&include_appinfo=true`),
     ]);
 
     const player  = summaryRes.data?.response?.players?.[0];
@@ -164,7 +176,19 @@ const getSteam = async (req, res) => {
         : null,
     }));
 
-    const totalGames = ownedRes.data?.response?.game_count ?? 0;
+    const rawOwnedGames = ownedRes.data?.response?.games || [];
+    const totalGames = ownedRes.data?.response?.game_count ?? rawOwnedGames.length;
+
+    const ownedGames = rawOwnedGames
+      .map(g => ({
+        appid:             g.appid,
+        name:              g.name,
+        playtime_forever:  Math.round(g.playtime_forever / 60 * 10) / 10,
+        img_icon_url:      g.img_icon_url
+          ? `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.img_icon_url}.jpg`
+          : null,
+      }))
+      .sort((a, b) => b.playtime_forever - a.playtime_forever);
 
     const statusMap = { 0: 'Offline', 1: 'Online', 2: 'Busy', 3: 'Away', 4: 'Snooze', 5: 'Looking to Trade', 6: 'Looking to Play' };
 
@@ -178,6 +202,7 @@ const getSteam = async (req, res) => {
         gameExtraInfo: player.gameextrainfo || null, // currently playing game
       },
       recentGames,
+      ownedGames,
       totalGames,
     });
   } catch (err) {

@@ -7,10 +7,20 @@ import ErrMsg from "../../ui/ErrMsg";
 export default function RedditPanel({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr]   = useState(null);
+  const [sort, setSort] = useState("new");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = () => {
+    setRefreshing(true);
+    apiFetch(`/feed/reddit?sort=${sort}`, {}, token)
+      .then(setData)
+      .catch(e => setErr(e.message))
+      .finally(() => setRefreshing(false));
+  };
 
   useEffect(() => {
-    apiFetch("/feed/reddit", {}, token).then(setData).catch(e => setErr(e.message));
-  }, [token]);
+    fetchData();
+  }, [token, sort]);
 
   if (err)   return <ErrMsg msg={err} />;
   if (!data) return <Loader />;
@@ -33,9 +43,25 @@ export default function RedditPanel({ token }) {
         </div>
       </div>
 
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16 }}>
+        <div style={{ ...lbl, marginBottom: 0 }}>Posts</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select value={sort} onChange={e => setSort(e.target.value)} style={{ background: C.surface, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 11, padding: "2px 6px", outline: "none" }}>
+            <option value="new">New</option>
+            <option value="hot">Hot</option>
+            <option value="top">Top</option>
+          </select>
+          <button onClick={fetchData} disabled={refreshing} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 4, cursor: "pointer", fontSize: 11, padding: "2px 8px" }}>
+            {refreshing ? "..." : "↻ Refresh"}
+          </button>
+        </div>
+      </div>
+
       {posts.map(p => (
         <div key={p.id} style={{ ...card, marginBottom: 8 }}>
-          <div style={{ fontSize: 10, color: PC.Reddit, marginBottom: 6 }}>{p.subreddit}</div>
+          <div style={{ fontSize: 10, marginBottom: 6 }}>
+            <a href={`https://reddit.com/${p.subreddit}`} target="_blank" rel="noreferrer" style={{ color: PC.Reddit, textDecoration: "none" }}>{p.subreddit}</a>
+          </div>
           <a href={p.permalink} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: C.text, textDecoration: "none", lineHeight: 1.6, display: "block", marginBottom: 10 }}>{p.title}</a>
           <div style={{ display: "flex", gap: 16, borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
             <span style={{ fontSize: 11, color: C.muted }}>↑ {p.score}</span>

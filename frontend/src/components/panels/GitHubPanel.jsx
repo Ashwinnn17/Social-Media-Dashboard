@@ -7,10 +7,20 @@ import ErrMsg from "../../ui/ErrMsg";
 export default function GitHubPanel({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr]   = useState(null);
+  const [sort, setSort] = useState("updated");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = () => {
+    setRefreshing(true);
+    apiFetch(`/feed/github?sort=${sort}`, {}, token)
+      .then(setData)
+      .catch(e => setErr(e.message))
+      .finally(() => setRefreshing(false));
+  };
 
   useEffect(() => {
-    apiFetch("/feed/github", {}, token).then(setData).catch(e => setErr(e.message));
-  }, [token]);
+    fetchData();
+  }, [token, sort]);
 
   if (err)   return <ErrMsg msg={err} />;
   if (!data) return <Loader />;
@@ -32,6 +42,19 @@ export default function GitHubPanel({ token }) {
               <div style={{ fontSize: 9, color: C.muted, letterSpacing: 1 }}>{l}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16 }}>
+        <div style={{ ...lbl, marginBottom: 0 }}>Repositories</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select value={sort} onChange={e => setSort(e.target.value)} style={{ background: C.surface, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 11, padding: "2px 6px", outline: "none" }}>
+            <option value="updated">Recently Updated</option>
+            <option value="stars">Most Stars</option>
+          </select>
+          <button onClick={fetchData} disabled={refreshing} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 4, cursor: "pointer", fontSize: 11, padding: "2px 8px" }}>
+            {refreshing ? "..." : "↻ Refresh"}
+          </button>
         </div>
       </div>
 

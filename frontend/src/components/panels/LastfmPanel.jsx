@@ -7,9 +7,18 @@ import ErrMsg from "../../ui/ErrMsg";
 export default function LastfmPanel({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr]   = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = () => {
+    setRefreshing(true);
+    apiFetch("/feed/lastfm", {}, token)
+      .then(setData)
+      .catch(e => setErr(e.message))
+      .finally(() => setRefreshing(false));
+  };
 
   useEffect(() => {
-    apiFetch("/feed/lastfm", {}, token).then(setData).catch(e => setErr(e.message));
+    fetchData();
   }, [token]);
 
   if (err)   return <ErrMsg msg={err} />;
@@ -30,7 +39,12 @@ export default function LastfmPanel({ token }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={card}>
-          <div style={lbl}>Recent Tracks</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ ...lbl, marginBottom: 0 }}>Recent Tracks</div>
+            <button onClick={fetchData} disabled={refreshing} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 4, cursor: "pointer", fontSize: 11, padding: "2px 8px" }}>
+              {refreshing ? "..." : "↻ Refresh"}
+            </button>
+          </div>
           {recent.slice(0, 5).map((t, i) => (
             <div key={i} style={{ borderBottom: i < 4 ? `1px solid ${C.border}` : "none", padding: "9px 0" }}>
               <div style={{ fontSize: 12 }}>{t.name}</div>
