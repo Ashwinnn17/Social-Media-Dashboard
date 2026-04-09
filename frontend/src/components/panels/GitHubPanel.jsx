@@ -1,8 +1,38 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "../../api/apiFetch";
-import { C, PC, LANG_COLOR, card, lbl } from "../../theme/styles";
-import Loader from "../../ui/Loader";
+import { C, PC, LANG_COLOR, lbl } from "../../theme/styles";
+import HoverCard from "../../ui/HoverCard";
 import ErrMsg from "../../ui/ErrMsg";
+import { SkelLine, SkelCircle, SkelRect } from "../../ui/Skeleton";
+
+function GitHubSkeleton() {
+  return (
+    <>
+      {/* Profile card skeleton */}
+      <div style={{ background: "#161616", border: "1px solid #242424", borderRadius: 5, padding: 20, marginBottom: 10, display: "flex", alignItems: "center", gap: 14 }}>
+        <SkelCircle size={44} />
+        <div style={{ flex: 1 }}>
+          <SkelLine width="40%" height={14} mb={8} />
+          <SkelLine width="60%" height={10} mb={0} />
+        </div>
+        <div style={{ display: "flex", gap: 20 }}>
+          {[0,1,2].map(i => <SkelRect key={i} width={40} height={36} mb={0} />)}
+        </div>
+      </div>
+      {/* Repo card skeletons */}
+      {[1,2,3,4,5].map(i => (
+        <div key={i} style={{ background: "#161616", border: "1px solid #242424", borderRadius: 5, padding: 20, marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <SkelLine width="35%" height={13} mb={0} />
+            <SkelLine width="10%" height={13} mb={0} />
+          </div>
+          <SkelLine width="80%" height={10} mb={10} />
+          <SkelLine width="12%" height={9} mb={0} />
+        </div>
+      ))}
+    </>
+  );
+}
 
 export default function GitHubPanel({ token }) {
   const [data, setData] = useState(null);
@@ -18,17 +48,15 @@ export default function GitHubPanel({ token }) {
       .finally(() => setRefreshing(false));
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [token, sort]);
+  useEffect(() => { fetchData(); }, [token, sort]);
 
   if (err)   return <ErrMsg msg={err} />;
-  if (!data) return <Loader />;
+  if (!data) return <GitHubSkeleton />;
 
   const { user, repos } = data;
   return (
     <>
-      <div style={{ ...card, marginBottom: 10, display: "flex", alignItems: "center", gap: 14 }}>
+      <HoverCard glowColor={PC.GitHub} style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 14 }}>
         <img src={user.avatar_url} alt="" style={{ width: 44, height: 44, borderRadius: "50%", border: `1px solid ${C.border}` }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{user.name || user.login}</div>
@@ -43,7 +71,7 @@ export default function GitHubPanel({ token }) {
             </div>
           ))}
         </div>
-      </div>
+      </HoverCard>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16 }}>
         <div style={{ ...lbl, marginBottom: 0 }}>Repositories</div>
@@ -59,14 +87,14 @@ export default function GitHubPanel({ token }) {
       </div>
 
       {repos.map(r => (
-        <div key={r.id} style={{ ...card, marginBottom: 8 }}>
+        <HoverCard key={r.id} glowColor={PC.GitHub} style={{ marginBottom: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
             <a href={r.html_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: PC.GitHub, fontWeight: 600, textDecoration: "none" }}>{r.name}</a>
             <span style={{ fontSize: 11, color: C.muted }}>★ {r.stargazers_count}</span>
           </div>
           {r.description && <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>{r.description}</div>}
           {r.language && <span style={{ fontSize: 9, color: LANG_COLOR[r.language] || C.muted }}>● {r.language}</span>}
-        </div>
+        </HoverCard>
       ))}
     </>
   );

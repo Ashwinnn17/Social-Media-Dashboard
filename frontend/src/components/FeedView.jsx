@@ -22,7 +22,7 @@ export default function FeedView({ token, platform, onPlatformChange }) {
         ))}
       </div>
 
-      <div style={{ maxWidth: 660, margin: "0 auto" }}>
+      <div key={platform} className="panel-fade" style={{ maxWidth: 660, margin: "0 auto" }}>
         {platform === "GitHub"  && <GitHubPanel token={token} />}
         {platform === "Reddit"  && <RedditPanel token={token} />}
         {platform === "Last.fm" && <LastfmPanel token={token} />}

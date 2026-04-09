@@ -1,3 +1,4 @@
 node_modules/
 .env
-db_dump.json
+db_dump.json
+Project_Report.md

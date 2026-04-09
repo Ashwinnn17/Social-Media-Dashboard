@@ -1,8 +1,38 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "../../api/apiFetch";
-import { C, PC, card, lbl } from "../../theme/styles";
-import Loader from "../../ui/Loader";
+import { C, PC, lbl } from "../../theme/styles";
+import HoverCard from "../../ui/HoverCard";
 import ErrMsg from "../../ui/ErrMsg";
+import { SkelLine, SkelRect } from "../../ui/Skeleton";
+
+function RedditSkeleton() {
+  return (
+    <>
+      {/* Profile card */}
+      <div style={{ background: "#161616", border: "1px solid #242424", borderRadius: 5, padding: 20, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <SkelLine width={120} height={13} mb={8} />
+          <SkelLine width={60} height={10} mb={0} />
+        </div>
+        <div style={{ display: "flex", gap: 20 }}>
+          {[0,1,2].map(i => <SkelRect key={i} width={50} height={36} mb={0} />)}
+        </div>
+      </div>
+      {/* Post skeletons */}
+      {[1,2,3,4,5].map(i => (
+        <div key={i} style={{ background: "#161616", border: "1px solid #242424", borderRadius: 5, padding: 20, marginBottom: 8 }}>
+          <SkelLine width="25%" height={9} mb={8} />
+          <SkelLine width="90%" height={13} mb={6} />
+          <SkelLine width="70%" height={13} mb={12} />
+          <div style={{ display: "flex", gap: 16 }}>
+            <SkelLine width={40} height={10} mb={0} />
+            <SkelLine width={40} height={10} mb={0} />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
 
 export default function RedditPanel({ token }) {
   const [data, setData] = useState(null);
@@ -18,17 +48,15 @@ export default function RedditPanel({ token }) {
       .finally(() => setRefreshing(false));
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [token, sort]);
+  useEffect(() => { fetchData(); }, [token, sort]);
 
   if (err)   return <ErrMsg msg={err} />;
-  if (!data) return <Loader />;
+  if (!data) return <RedditSkeleton />;
 
   const { about, posts } = data;
   return (
     <>
-      <div style={{ ...card, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <HoverCard glowColor={PC.Reddit} style={{ marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>u/{about.name}</div>
           <div style={{ fontSize: 10, color: C.muted }}>Reddit</div>
@@ -41,7 +69,7 @@ export default function RedditPanel({ token }) {
             </div>
           ))}
         </div>
-      </div>
+      </HoverCard>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16 }}>
         <div style={{ ...lbl, marginBottom: 0 }}>Posts</div>
@@ -58,7 +86,7 @@ export default function RedditPanel({ token }) {
       </div>
 
       {posts.map(p => (
-        <div key={p.id} style={{ ...card, marginBottom: 8 }}>
+        <HoverCard key={p.id} glowColor={PC.Reddit} style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 10, marginBottom: 6 }}>
             <a href={`https://reddit.com/${p.subreddit}`} target="_blank" rel="noreferrer" style={{ color: PC.Reddit, textDecoration: "none" }}>{p.subreddit}</a>
           </div>
@@ -67,7 +95,7 @@ export default function RedditPanel({ token }) {
             <span style={{ fontSize: 11, color: C.muted }}>↑ {p.score}</span>
             <span style={{ fontSize: 11, color: C.muted }}>◎ {p.num_comments}</span>
           </div>
-        </div>
+        </HoverCard>
       ))}
     </>
   );
